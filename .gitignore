@@ -3,3 +3,5 @@ credentials.txt
 
 # Ignore the .idea directory
 .idea/
+#pycache dir
+__pycache__/
