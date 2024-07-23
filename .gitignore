@@ -1,0 +1,5 @@
+# Ignore the credentials file
+credentials.txt
+
+# Ignore the .idea directory
+.idea/
