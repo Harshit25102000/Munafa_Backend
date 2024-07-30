@@ -7,7 +7,7 @@ from flask_session import Session
 import bcrypt
 import csv
 import io
-
+import requests
 
 from flask_bcrypt import Bcrypt
 app = Flask(__name__)
@@ -159,6 +159,50 @@ def at_me():
         return return_error(error="UNAUTHORIZED",code=401)
     else:
         return return_success(data={"email": user_id})
+
+@app.route("/get_data",methods=["GET"])
+def get_data():
+    try:
+        symbol="IBM"
+        url = f'https://www.alphavantage.co/query?function=OVERVIEW&symbol={symbol}&apikey=THXW5Z2G9JZKTRK4'
+        r = requests.get(url)
+        data = r.json()
+        print(data)
+        symb=data['Symbol']
+        exchange=data["Exchange"]
+    
+        return return_success(data={"symbol": symb,"exchange":exchange})
+        
+    except Exception as e:
+        return return_error(message=str(e))
+    
+
+@app.route("/get_chart_data",methods=["GET"])
+def get_chart_data():
+    try:
+        symbol="IBM"
+        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey=THXW5Z2G9JZKTRK4'
+        
+        r = requests.get(url)
+        data = r.json()
+        
+      
+        date=[]
+        close=[]
+        temp=data['Time Series (Daily)']
+        for i in temp:
+            print(i)
+            print(temp[i]['4. close'])
+            date.append(i)
+            close.append(temp[i]["4. close"])
+        print(date,close)
+       
+    
+        return return_success(data={"date": date,"close":close})
+        
+    except Exception as e:
+        return return_error(message=str(e))
+
 
 if __name__=="__main__":
 
