@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.secret_key = "harshit25102000"
 CORS(app,supports_credentials=True)
 # import random
-# import datetime
+import time
 # import pytz
 # from io import BytesIO
 # import threading
@@ -180,7 +180,10 @@ def get_data():
 @app.route("/get_chart_data",methods=["GET"])
 def get_chart_data():
     try:
-        symbol="IBM"
+        data = request.get_json()
+
+        symbol = data["symbol"]
+
         url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey=THXW5Z2G9JZKTRK4'
         
         r = requests.get(url)
@@ -203,6 +206,30 @@ def get_chart_data():
     except Exception as e:
         return return_error(message=str(e))
 
+
+@app.route("/get_all_price", methods=["GET"])
+def get_all_price():
+    try:
+        symbols = ["ibm","msft","tsla","race"]
+        result=[]
+        for symbol in symbols:
+            url = f"https://echios.tech/price/{symbol}?apikey=GRP14XN3TW0RK"
+            r = requests.get(url)
+            data = r.json()
+            price=data["price"]
+            bid = round(price - 0.5, 2)
+            ask = price + 1
+            dic={"price": price, "bid": bid, "ask":ask,"symbol":symbol}
+            result.append(dic)
+            time.sleep(2.5)
+
+
+
+
+        return return_success(result)
+
+    except Exception as e:
+        return return_error(message=str(e))
 
 if __name__=="__main__":
 
