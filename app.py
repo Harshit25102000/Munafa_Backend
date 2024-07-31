@@ -175,9 +175,43 @@ def get_data():
         
     except Exception as e:
         return return_error(message=str(e))
-    
 
-@app.route("/get_chart_data",methods=["GET"])
+
+@app.route("/get_index_data",methods=["GET"])
+def get_index_data():
+    
+        symbols=["GOOG","AMZN","JPM","F","AAPL"]
+        res=[]
+        negative=False
+        for symbol in symbols:
+            url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey=THXW5Z2G9JZKTRK4'
+            r = requests.get(url)
+            data = r.json()
+            print(data)
+            quote=data["Global Quote"]
+            print(quote)
+            print(type(quote))
+            change_percent=quote["10. change percent"]
+            price=quote["05. price"]
+            
+            dict={}
+            dict["change_percent"]=change_percent[:-1]
+            
+            if change_percent.startswith('-'):
+                negative=True
+            dict["price"]=price
+            dict["symbol"]=symbol
+            dict["negative"]=negative
+            
+            res.append(dict)
+
+            
+    
+        return return_success(res)
+        
+
+
+@app.route("/get_chart_data",methods=["POST"])
 def get_chart_data():
     try:
         data = request.get_json()
@@ -213,21 +247,47 @@ def get_all_price():
         symbols = ["ibm","msft","tsla","race"]
         result=[]
         for symbol in symbols:
-            url = f"https://echios.tech/price/{symbol}?apikey=GRP14XN3TW0RK"
-            r = requests.get(url)
-            data = r.json()
-            price=data["price"]
+            # time.sleep(3)
+            # url = f"https://echios.tech/price/{symbol}?apikey=GRP14XN3TW0RK"
+            # r = requests.get(url)
+            # print(r)
+            # data = r.json()
+            # price=data["price"]
+            price=100
             bid = round(price - 0.5, 2)
             ask = price + 1
             dic={"price": price, "bid": bid, "ask":ask,"symbol":symbol}
+            print(dic)
             result.append(dic)
-            time.sleep(2.5)
+            # time.sleep(3)
 
 
 
 
         return return_success(result)
 
+    except Exception as e:
+        return return_error(message=str(e))
+
+
+
+@app.route("/execute_trade",methods=["POST"])
+def execute_trade():
+    try:
+        data = request.get_json()
+        print(data)
+        qty=data["qty"]
+        action=data["action"]
+        bid=data["bid"]
+        ask=["ask"]
+        symbol=data["symbol"]
+        query={"qty":qty,"action":action,"bid":bid,"ask":ask,"symbol":symbol,"email":session["email"]}
+        # transactions.insert_one(query)
+
+
+       
+       
+        return return_success(query)
     except Exception as e:
         return return_error(message=str(e))
 
