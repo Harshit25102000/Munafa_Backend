@@ -14,6 +14,7 @@ app = Flask(__name__)
 app.secret_key = "harshit25102000"
 CORS(app,supports_credentials=True)
 # import random
+from datetime import datetime
 import time
 # import pytz
 # from io import BytesIO
@@ -243,6 +244,7 @@ def get_chart_data():
 
 @app.route("/get_all_price", methods=["GET"])
 def get_all_price():
+    time.sleep(5)
     try:
         symbols = ["ibm","msft","tsla","race"]
         result=[]
@@ -272,23 +274,138 @@ def get_all_price():
 
 
 @app.route("/execute_trade",methods=["POST"])
+@logged_in
 def execute_trade():
     try:
         data = request.get_json()
         print(data)
         qty=data["qty"]
+        qty=float(qty)
         action=data["action"]
         bid=data["bid"]
-        ask=["ask"]
+        ask=data["ask"]
+        print(bid,ask,qty)
+        bid=float(bid)
+        ask=float(ask)
         symbol=data["symbol"]
-        query={"qty":qty,"action":action,"bid":bid,"ask":ask,"symbol":symbol,"email":session["email"]}
-        # transactions.insert_one(query)
+        sl=data["stopLoss"]
+        limit=data["limitPrice"]
 
 
+        now=datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M:%S")
+        query = {"qty": qty, "action": action, "bid": bid, "ask": ask, "symbol": symbol, "email": session["email"],"date":current_date,"time":current_time}
+        transactions.insert_one(query)
+        if action=="buy":
+            x=portfolio.find_one({"symbol":symbol})
+            if x:
+                my_query={"symbol":symbol}
+                new_qty=x["qty"]+qty
+                new_invested_amount=x["invested"]+bid*qty
+                updated_vals={ "$set": { "qty": new_qty,"invested":new_invested_amount } }
+                portfolio.update_one(my_query,updated_vals)
+            else:
+                portfolio.insert_one({"qty": qty, "symbol": symbol, "email": session["email"], "invested": bid * qty})
+        elif action=="sell":
+            x = portfolio.find_one({"symbol": symbol})
+            if x:
+
+                if qty>x["qty"]:
+                    return return_error(error="Insufficient stocks")
+                else:
+
+                    my_query = {"symbol": symbol}
+                    new_qty = x["qty"] - qty
+                    new_invested_amount = x["invested"] - ask * qty
+                    updated_vals = {"$set": {"qty": new_qty, "invested": new_invested_amount}}
+                    portfolio.update_one(my_query, updated_vals)
+
+            else:
+                return return_error(error="Stock Not Found")
+
+        if sl!="":
+            stop_loss.insert_one({"qty":qty,"symbol":symbol,"stop_loss":sl,"email":session["email"]})
        
-       
-        return return_success(query)
+        return return_success()
     except Exception as e:
+        print(e)
+        return return_error(message=str(e))
+
+
+@app.route("/get_portfolio",methods=["GET"])
+@logged_in
+def get_portfolio():
+
+    time.sleep(5)
+    try:
+        email=session["email"]
+        x=portfolio.find({"email":email})
+        shares=[]
+        total_invested=0
+
+        symbols = ["ibm", "msft", "tsla", "race"]
+        price_result = {}
+        for symbol in symbols:
+            time.sleep(3)
+            url = f"https://echios.tech/price/{symbol}?apikey=GRP14XN3TW0RK"
+            r = requests.get(url)
+            print(r)
+            data = r.json()
+            price=data["price"]
+            price=float(price)
+            price_result[symbol]=price
+            print(price_result)
+
+        for i in x:
+            dict={}
+            dict["qty"]=i["qty"]
+            dict["symbol"]=i["symbol"]
+            dict["invested"]=i['invested']
+            dict["price"]=price_result[i['symbol']]
+            dict["current_value"]=round(price_result[i['symbol']]*i['qty'],2)
+            shares.append(dict)
+            total_invested=total_invested+i['invested']
+
+        current_val = 0
+        for share in shares:
+            current_val=current_val+share['price']*share['qty']
+        returns=((current_val-total_invested)/total_invested)*100
+        returns=round(returns,2)
+
+        result={'shares': shares,'total_invested': total_invested,'current_val': round(current_val,2),'returns': returns}
+        return return_success(result)
+    except Exception as e:
+        print(e)
+        return return_error(message=str(e))
+
+
+@app.route("/get_transactions", methods=["GET"])
+@logged_in
+def get_transactions():
+    time.sleep(5)
+    try:
+        x=transactions.find({"email":session["email"]})
+        result=[]
+        for i in x:
+            dict={}
+            dict['qty']=i['qty']
+            dict['action']=i['action']
+            if i['action'] == 'buy':
+                dict['amount']=i['bid']*i['qty']
+                dict['rate']=i['bid']
+            else:
+                dict['amount'] = i['ask'] * i['qty']
+                dict['rate'] = i['ask']
+            dict['symbol']=i['symbol']
+            dict['date']=i['date']
+            dict['time']=i['time']
+            result.append(dict)
+
+
+        return return_success(result)
+    except Exception as e:
+        print(e)
         return return_error(message=str(e))
 
 if __name__=="__main__":
