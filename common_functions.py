@@ -4,6 +4,8 @@ from flask import session
 from functools import wraps
 import random
 from mongo_connection import otp_db
+from datetime import datetime, timedelta
+import random
 import string
 def return_error(error="SOMETHING_WENT_WRONG", message="Error", data={}, code=200):
     return jsonify({"success": False, "error": error, "message": message, "data": data})
@@ -64,13 +66,25 @@ def generate_otp():
         if not existing_otp:
             return otp
 
-# def generate_unique_id(length=10, chars=string.ascii_letters + string.digits):
-#
-#     unique_string = ''.join(random.choice(chars) for _ in range(length))
-#     while True:
-#
-#         if not unique_db.find_one({"unique_string_field": unique_string}):
-#             return unique_string
-#         else:
-#
-#             unique_string = ''.join(random.choice(chars) for _ in range(length))
+def shorten_to_25_words(text):
+    words = text.split()
+    return ' '.join(words[:20]) + ('...' if len(words) > 20 else '')
+
+def shorten_to_10_words(text):
+    words = text.split()
+    return ' '.join(words[:10]) + ('...' if len(words) > 10 else '')
+
+def generate_date_and_value_lists():
+    # Generate a list of dates from the last 30 days
+    today = datetime.now()
+    date_list = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(30)]
+
+    # Generate a list of fluctuating values
+    initial_value = 189
+    value_list = [initial_value]
+    for _ in range(29):  # 29 more values to match the length of date_list
+        fluctuation = random.choice([-3, -2, -1, 1, 2, 3])  # Fluctuate by -3, -2, -1, 1, 2, or 3
+        new_value = value_list[-1] + fluctuation
+        value_list.append(new_value)
+
+    return date_list, value_list
